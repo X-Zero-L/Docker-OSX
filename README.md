@@ -95,6 +95,22 @@ docker run -it \
 # docker build -t docker-osx --build-arg SHORTNAME=monterey .
 ```
 
+### Ventura [![https://img.shields.io/docker/image-size/sickcodes/docker-osx/ventura?label=sickcodes%2Fdocker-osx%3Aventura](https://img.shields.io/docker/image-size/sickcodes/docker-osx/ventura?label=sickcodes%2Fdocker-osx%3Aventura)](https://hub.docker.com/r/sickcodes/docker-osx/tags?page=1&ordering=last_updated)
+
+```bash
+
+docker run -it \
+    --device /dev/kvm \
+    -p 50922:10022 \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -e "DISPLAY=${DISPLAY:-:0.0}" \
+    -e GENERATE_UNIQUE=true \
+    -e MASTER_PLIST_URL='https://raw.githubusercontent.com/sickcodes/osx-serial-generator/master/config-custom.plist' \
+    sickcodes/docker-osx:ventura
+
+# docker build -t docker-osx --build-arg SHORTNAME=ventura .
+```
+
 #### Run Catalina Pre-Installed [![https://img.shields.io/docker/image-size/sickcodes/docker-osx/auto?label=sickcodes%2Fdocker-osx%3Aauto](https://img.shields.io/docker/image-size/sickcodes/docker-osx/auto?label=sickcodes%2Fdocker-osx%3Aauto)](https://hub.docker.com/r/sickcodes/docker-osx/tags?page=1&ordering=last_updated)
 
 ```bash
@@ -178,12 +194,15 @@ Enable SSH in network sharing inside the guest first. Change `-e "USERNAME=user"
 Since you can't see the screen, use the PLIST with nopicker, for example:
 
 ```bash
-wget https://images2.sick.codes/mac_hdd_ng_auto.img
+# Catalina
+# wget https://images2.sick.codes/mac_hdd_ng_auto.img
+# Monterey
+wget https://images.sick.codes/mac_hdd_ng_auto_monterey.img
 
 docker run -it \
     --device /dev/kvm \
     -p 50922:10022 \
-    -v "${PWD}/mac_hdd_ng_auto.img:/image" \
+    -v "${PWD}/mac_hdd_ng_auto_monterey.img:/image" \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e "DISPLAY=${DISPLAY:-:0.0}" \
     -e "USERNAME=user" \
@@ -193,11 +212,22 @@ docker run -it \
     sickcodes/docker-osx:naked-auto
 ```
 
+# Share directories, sharing files, shared folder, mount folder
+The easiest and most secure way is `sshfs`
+```bash
+# on Linux/Windows
+mkdir ~/mnt/osx
+sshfs user@localhost:/ -p 50922 ~/mnt/osx
+# wait a few seconds, and ~/mnt/osx will have full rootfs mounted over ssh, and in userspace
+# automated: sshpass -p <password> sshfs user@localhost:/ -p 50922 ~/mnt/osx
+```
+
+
 # (VFIO) iPhone USB passthrough (VFIO)
 
 If you have a laptop see the next usbfluxd section.
 
-If you have a desktop PC, you can use [@Silfalion](https://github.com/Silfalion)'s instructions : [https://github.com/Silfalion/Iphone_docker_osx_passthrough](https://github.com/Silfalion/Iphone_docker_osx_passthrough)
+If you have a desktop PC, you can use [@Silfalion](https://github.com/Silfalion)'s instructions: [https://github.com/Silfalion/Iphone_docker_osx_passthrough](https://github.com/Silfalion/Iphone_docker_osx_passthrough)
 
 # (USBFLUXD) iPhone USB -> Network style passthrough OSX-KVM Docker-OSX
 
@@ -296,6 +326,41 @@ SEE commands in [https://github.com/sickcodes/osx-optimizer](https://github.com/
 - Disable heavy login screen wallpaper
 - Disable updates (at your own risk!)
 
+## Increase disk space by moving /var/lib/docker to external drive, block storage, NFS, or any other location conceivable.
+
+Move /var/lib/docker, following the tutorial below
+
+- Cheap large physical disk storage instead using your server's disk, or SSD.
+- Block Storage, NFS, etc.
+
+Tutorial here: https://sick.codes/how-to-run-docker-from-block-storage/
+
+Only follow the above tutorial if you are happy with wiping all your current Docker images/layers.
+
+Safe mode: Disable docker temporarily so you can move the Docker folder temporarily.
+
+- Do NOT do this until you have moved your image out already [https://github.com/dulatello08/Docker-OSX/#quick-start-your-own-image-naked-container-image](https://github.com/dulatello08/Docker-OSX/#quick-start-your-own-image-naked-container-image)
+
+```bash
+killall dockerd
+systemctl disable --now docker
+systemctl disable --now docker.socket
+systemctl stop docker
+systemctl stop docker.socket
+```
+Now, that Docker daemon is off, move /var/lib/docker somewhere
+
+Then, symbolicly link /var/lib/docker somewhere:
+
+```bash
+mv /var/lib/docker /run/media/user/some_drive/docker
+ln -s /run/media/user/some_drive/docker /var/lib/docker
+
+# now check if /var/lib/docker is working still
+ls /var/lib/docker
+```
+If you see folders, then it worked. You can restart Docker, or just reboot if you want to be sure.
+
 ## Important notices:
 
 **2021-11-14** - Added High Sierra, Mojave
@@ -307,18 +372,20 @@ Pick one of these while **building**, irrelevant when using docker pull:
 --build-arg SHORTNAME=catalina
 --build-arg SHORTNAME=big-sur
 --build-arg SHORTNAME=monterey
+--build-arg SHORTNAME=ventura
 ```
 
 
 ## Technical details
 
-There currently multiple images, each with different use cases (explained [below](#container-images)):
+There are currently multiple images, each with different use cases (explained [below](#container-images)):
 
 - High Sierra
 - Mojave
 - Catalina
 - Big Sur
 - Monterey
+- Ventura
 - Auto (pre-made Catalina)
 - Naked (use your own .img)
 - Naked-Auto (user your own .img and SSH in)
@@ -423,7 +490,7 @@ In case you're interested, contact [@sickcodes on Twitter](https://twitter.com/s
 
 ## License/Contributing
 
-Docker-OSX is licensed under the [GPL v3+](LICENSE). Contributions are welcomed and immensely appreciated. You are in-fact permitted to use Docker-OSX as a tool to create proprietary software.
+Docker-OSX is licensed under the [GPL v3+](LICENSE). Contributions are welcomed and immensely appreciated. You are in fact permitted to use Docker-OSX as a tool to create proprietary software.
 
 ### Other cool Docker/QEMU based projects
 - [Run Android in a Docker Container with Dock Droid](https://github.com/sickcodes/dock-droid)
@@ -443,7 +510,7 @@ Product names, logos, brands and other trademarks referred to within this projec
 
 ### Already set up or just looking to make a container quickly? Check out our [quick start](#quick-start-docker-osx) or see a bunch more use cases under our [container creation examples](#container-creation-examples) section.
 
-There are several different Docker-OSX images available which are suitable for different purposes.
+There are several different Docker-OSX images available that are suitable for different purposes.
 
 - `sickcodes/docker-osx:latest` - [I just want to try it out.](#quick-start-docker-osx)
 - `sickcodes/docker-osx:latest` - [I want to use Docker-OSX to develop/secure apps in Xcode (sign into Xcode, Transporter)](#quick-start-your-own-image-naked-container-image)
@@ -455,6 +522,7 @@ Create your personal image using `:latest` or `big-sur`. Then, pull the image ou
 - `sickcodes/docker-osx:naked` - [I need iMessage/iCloud for security research.](#generating-serial-numbers)
 - `sickcodes/docker-osx:big-sur` - [I want to run Big Sur.](#quick-start-docker-osx)
 - `sickcodes/docker-osx:monterey` - [I want to run Monterey.](#quick-start-docker-osx)
+- `sickcodes/docker-osx:ventura` - [I want to run Ventura.](#quick-start-docker-osx)
 
 - `sickcodes/docker-osx:high-sierra` - I want to run High Sierra.
 - `sickcodes/docker-osx:mojave` - I want to run Mojave.
@@ -503,7 +571,7 @@ wsl --install
 
 If you have previously installed WSL1, upgrade to WSL 2. Check [this link to upgrade from WSL1 to WSL2](https://docs.microsoft.com/en-us/windows/wsl/install#upgrade-version-from-wsl-1-to-wsl-2).
 
-After WSL installation, go to `C:/Users/<Your_Name>/.wslconfig` and add `nestedVirtualization=true` to the end of the file (If the file doesn't exist, create it). You may need to select "Show Hidden Files" and "Show File Extensions" in File Explorer options.
+After WSL installation, go to `C:/Users/<Your_Name>/.wslconfig` and add `nestedVirtualization=true` to the end of the file (If the file doesn't exist, create it). For more information about the `.wslconfig` file check [this link](https://docs.microsoft.com/en-us/windows/wsl/wsl-config#wslconfig). Verify that you have selected "Show Hidden Files" and "Show File Extensions" in File Explorer options.
 The result should be like this:
 ```
 [wsl2]
@@ -516,6 +584,8 @@ Go into your WSL distro (Run `wsl` in powershell) and check if KVM is enabled by
 INFO: /dev/kvm exists
 KVM acceleration can be used
 ```
+
+Use the command `sudo apt -y install bridge-utils cpu-checker libvirt-clients libvirt-daemon qemu qemu-kvm` to install it if it isn't.
 
 Now download and install [Docker for Windows](https://docs.docker.com/desktop/windows/install/) if it is not already installed.
 
@@ -534,13 +604,21 @@ Finally, there are 3 ways to get video output:
 
 To use WSLg's built-in X-11 server, change these two lines in the docker run command to point Docker-OSX to WSLg.
 
-```bash
+```
+-e "DISPLAY=${DISPLAY:-:0.0}" \
+-v /mnt/wslg/.X11-unix:/tmp/.X11-unix \
+```
+Or try:
+
+```
 -e "DISPLAY=${DISPLAY:-:0}" \
 -v /mnt/wslg/.X11-unix:/tmp/.X11-unix \
 ```
 
+For Ubuntu 20.x on Windows, see [https://github.com/sickcodes/Docker-OSX/discussions/458](https://github.com/sickcodes/Docker-OSX/discussions/458)
+
 - VNC: See the [VNC section](#building-a-headless-container-which-allows-insecure-vnc-on-localhost-for-local-use-only) for more information. You could also add -vnc argument to qemu. Connect to your mac VM via a VNC Client. [Here is a how to](https://wiki.archlinux.org/title/QEMU#VNC)
-- Desktop Environment: This will give you a full desktop linux experiencem but it will use a bit more of the computer's resources. Here is an example guide, but there are other guides that help set up a desktop environment. [DE Example](https://www.makeuseof.com/tag/linux-desktop-windows-subsystem/)
+- Desktop Environment: This will give you a full desktop linux experience but it will use a bit more of the computer's resources. Here is an example guide, but there are other guides that help set up a desktop environment. [DE Example](https://www.makeuseof.com/tag/linux-desktop-windows-subsystem/)
 
 ## Additional boot instructions for when you are [creating your container](#container-creation-examples)
 
@@ -599,15 +677,17 @@ Or
 
 #### Use more CPU Cores/SMP
 
-This will use all available cores; adjust accordingly to the day of the week:
+Examples:
 
-```
-    -e CPU_STRING=$(nproc) \
-```
+`-e EXTRA='-smp 6,sockets=3,cores=2'`
 
-This will use `-smp $(nproc)`
+`-e EXTRA='-smp 8,sockets=4,cores=2'`
 
-### Confirm your user is part of the the Docker group, KVM group, libvirt group
+`-e EXTRA='-smp 16,sockets=8,cores=2'`
+
+Note, unlike memory, CPU usage is shared. so you can allocate all of your CPU's to the container.
+
+### Confirm your user is part of the Docker group, KVM group, libvirt group
 
 #### Add yourself to the Docker group
 
@@ -770,6 +850,17 @@ docker run \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e PULSE_SERVER=unix:/tmp/pulseaudio.socket \
     sickcodes/docker-osx pactl list
+```
+
+#### PulseAudio with WSLg
+
+```bash
+docker run \
+    --device /dev/kvm \
+    -e AUDIO_DRIVER=pa,server=unix:/tmp/pulseaudio.socket \
+    -v /mnt/wslg/runtime-dir/pulse/native:/tmp/pulseaudio.socket \
+    -v /mnt/wslg/.X11-unix:/tmp/.X11-unix \
+    sickcodes/docker-osx
 ```
 
 ### Forward additional ports (nginx hosting example)
@@ -948,7 +1039,7 @@ IP_ADDRESS=172.17.0.1
 
 ### Fedora: enable internet connectivity with a bridged network
 
-Fedora's default firewall settings may prevent Docker's network interface from reaching the internet. In order to reoslve this, you will need to whitelist the interface in your firewall:
+Fedora's default firewall settings may prevent Docker's network interface from reaching the internet. In order to resolve this, you will need to whitelist the interface in your firewall:
 
 ```bash
 # Set the docker0 bridge to the trusted zone
@@ -1310,7 +1401,7 @@ docker run -it \
     sickcodes/docker-osx:latest
 ```
 
-Here's a few other resolutions! If you resolution is invalid, it will default to 800x600.
+Here's a few other resolutions! If your resolution is invalid, it will default to 800x600.
 
 ```
     -e WIDTH=800 \
@@ -1599,7 +1690,7 @@ docker run -it \
     sickcodes/docker-osx:naked
 ```
 
-### Building a headless container which allows insecure VNC on localhost (!for local use only!)
+### Building a headless container that allows insecure VNC on localhost (!for local use only!)
 
 **Must change -it to -i to be able to interact with the QEMU console**
 
@@ -1644,7 +1735,7 @@ You also need the container IP: `docker inspect <containerid> | jq -r '.[0].Netw
 
 Or `ip n` will usually show the container IP first.
 
-Now VNC connect using the Docker container IP, for example `172.17.0.2:5999`
+Now VNC connects using the Docker container IP, for example `172.17.0.2:5999`
 
 Remote VNC over SSH: `ssh -N root@1.1.1.1 -L  5999:172.17.0.2:5999`, where `1.1.1.1` is your remote server IP and `172.17.0.2` is your LAN container IP.
 
@@ -1804,4 +1895,3 @@ You may when initialising or booting into a container see errors from the `(qemu
 `ALSA lib blahblahblah: (function name) returned error: no such file or directory`. These are more or less expected. As long as you are able to boot into the container and everything is working, no reason to worry about these.
 
 See also: [here](https://github.com/sickcodes/Docker-OSX/issues/174).
-

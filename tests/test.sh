@@ -125,19 +125,41 @@ TEST_BUILDS=(
     'docker-osx:auto'
 )
 
+TEST_BUILDS=(
+    'docker-osx:naked'
+    'docker-osx:naked-auto'
+    'docker-osx:auto'
+)
+
 VERSION_BUILDS=(
     'high-sierra'
     'mojave'
     'catalina'
     'big-sur'
     'monterey'
+    'ventura'
 )
+
+warning () {
+    clear
+    for j in {15..1}; do 
+        echo "############# WARNING: THIS SCRIPT IS NOT INTENDED FOR USE BY ################"
+        echo "############# IT IS USED BY THE PROJECT TO BUILD AND PUSH TO DOCKERHUB #######"
+        echo ""
+        echo "                     Press Ctrl C to stop.       "
+        MAX_COLS=$((${COLUMNS}/2))
+        printf "$j %.0s" {1..20}
+        echo
+        sleep 1
+    done
+}
 
 install_docker () {
     apt remove docker docker-engine docker.io containerd runc -y \
     ; apt install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  apt-key add - \
     && apt-key fingerprint 0EBFCD88 \
+    && > /etc/apt/sources.list.d/docker.list \
     && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
     && apt update -y \
     && apt install docker-ce docker-ce-cli containerd.io -y \
@@ -270,6 +292,7 @@ EOF
     systemctl enable --now docker
 }
 
+warning
 tee -a ~/.bashrc <<EOF
 export DEBIAN_FRONTEND=noninteractive
 export TZ=UTC
@@ -285,13 +308,15 @@ yes | apt install -y --no-install-recommends tzdata -y
 install_scrotcat
 yes | install_vnc
 export_display_99
+apt install xvfb -y
 start_xvfb
 # start_vnc
 enable_kvm
 reset_docker_hard
-echo killall Xvfb
+# echo killall Xvfb
 clone_repo "${BRANCH}" "${REPO}"
 cd ./Docker-OSX
+git pull
 
 for SHORTNAME in "${VERSION_BUILDS[@]}"; do
     docker-osx:version "${SHORTNAME}"
@@ -312,6 +337,10 @@ if [[ "${DOCKER_USERNAME}" ]] && [[ "${DOCKER_PASSWORD}" ]]; then
             docker push "sickcodes/docker-osx:${SHORTNAME}"
         done \
         && touch PUSHED
+    docker push sickcodes/docker-osx:naked
+    docker push sickcodes/docker-osx:auto
+    docker push sickcodes/docker-osx:naked-auto
+
 fi
 
 # connect remotely to your server to use VNC
